@@ -9,7 +9,7 @@ AI Stock Predictor 是一个简单易用的人工智能工具，用于预测股�
 以下是如何使用 AI Stock Predictor 进行股票预测的简单示例：
 
 ```python
-from ai_stock.stock_info import StockInfo
+from ai_stocks import StockInfo
 
 # 初始化股票信息
 s = StockInfo('601688')
@@ -24,7 +24,7 @@ print(f"Predicted opening price for next trading day: {predicted_price}")
 
 安装
 ```bash
-pip install ai_stock
+pip install ai_stocks
 ```
 
 ## 贡献
