@@ -4,6 +4,8 @@ from torch.autograd import Variable
 import torch.nn as nn
 import torch
 import os
+import pandas as pd
+import matplotlib.pyplot as plt
 
 STOCK_PATH = 'data/stock'
 class StockInfo:
@@ -87,10 +89,47 @@ class StockInfo:
             pred_list = pred.data.squeeze(1).tolist()  # 使用不同的变量名
             preds.append(pred_list[-1])  # 使用 append 而不是 extend
             labels.extend(label[:, 0].tolist())  # 假设我们只预测收盘价
-        for i in range(len(preds)):
-            print('预测值是%.2f,真实值是%.2f' % (
-                preds[i] * self.stock_data_handler.price_max, labels[i] * self.stock_data_handler.price_max))
+        
+        self.create_dataframe(preds, labels)
+        return self
+        
+    def create_dataframe(self, preds, labels):
+        # 创建一个空列表来存储每一行的结果
+        results = []
 
+        # 遍历每个预测和真实值
+        for i in range(len(preds)):
+            # 获取未归一化的价格
+            pred_price = self.stock_data_handler.unnormalize_price(preds[i])
+            label_price = self.stock_data_handler.unnormalize_price(labels[i])
+            
+            # 打印结果
+            print(f'预测值是{pred_price:.2f}, 真实值是{label_price:.2f}')
+            
+            # 将结果追加到列表中
+            results.append({'Predictions': pred_price, 'Actual Values': label_price})
+
+        # 将结果列表转换为 DataFrame
+        self.df = pd.DataFrame(results)
+
+        return self.df
+    
+    def show(self):
+        df = self.df
+        # 绘制图形
+        plt.figure(figsize=(10, 6))
+        plt.plot(df.index, df['Predictions'], label='Predictions', color='blue', marker='o')
+        plt.plot(df.index, df['Actual Values'], label='Actual Values', color='red', marker='x')
+
+        # 添加标题和标签
+        plt.title('Predictions vs Actual Values')
+        plt.xlabel('Index')
+        plt.ylabel('Value')
+        plt.legend()
+
+        # 显示图形
+        plt.grid(True)
+        plt.show()
 
     def predict_next_day(self):
         self.model.eval()  # 将模型设置为评估模式
@@ -109,7 +148,7 @@ class StockInfo:
 
             # 预测下一个时间步
             prediction = self.model(recent_data)
-            predicted_price = prediction.item() * self.stock_data_handler.price_max  # 反归一化
+            predicted_price = prediction.item() * (self.stock_data_handler.max_price - self.stock_data_handler.min_price) + self.stock_data_handler.min_price
 
             print(f"Predicted price for the next day is: {predicted_price:.2f}")
             return predicted_price
