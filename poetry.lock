@@ -191,13 +191,13 @@ files = [
 
 [[package]]
 name = "china-stock-data"
-version = "0.1.2"
+version = "0.1.4"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.12"
 files = [
-    {file = "china_stock_data-0.1.2-py3-none-any.whl", hash = "sha256:f9fdbfdb738487c58debc65a93e26f3953bdb9e9f8e0aa0c3f138876e92f47cc"},
-    {file = "china_stock_data-0.1.2.tar.gz", hash = "sha256:91bc106a4278fcbd9c606e6ee26b20958a6aac46a02aa1d4b4f0222f584244dd"},
+    {file = "china_stock_data-0.1.4-py3-none-any.whl", hash = "sha256:0e80bdfd7b261a130a00b72501398989206811835ade3852b4de3fe1c985dced"},
+    {file = "china_stock_data-0.1.4.tar.gz", hash = "sha256:06961e5c5347cb1ed0c2604b4af1bd9ee3758ea428798faa00430273160a9284"},
 ]
 
 [package.dependencies]

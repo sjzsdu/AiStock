@@ -1,27 +1,31 @@
 from china_stock_data import StockData
 import pandas as pd
-from torch.utils.data import DataLoader, Dataset
 import numpy as np
-from sklearn.model_selection import train_test_split
-from torchvision import transforms
 from matplotlib import pyplot as plt
 import math
-
-MAX_PERCENT= 1.1
-MIN_PERCENT= 0.9
+import matplotlib.dates as mdates
+from scipy.signal import find_peaks
+from ai_stocks.config import DATE_FORMAT
 
 class StockDataHandler:
-    def __init__(self, symbol, sequence_length=30, batch_size=32, test_ratio=0.2):
+    def __init__(self, symbol):
         self.symbol = symbol
-        self.sequence_length = sequence_length
-        self.batch_size = batch_size
-        self.test_ratio = test_ratio
         self.stock_data = StockData(symbol, days=365 * 100)
-        self.data = None
-        self.cached_dataset = None  # 缓存数据集
+
         self.price_cols = ['开盘', '收盘', '最高', '最低', '涨跌额', '平均', '加权平均', '平均成本', '90成本-低', '90成本-高', '70成本-低', '70成本-高']
-        self.other_cols = ['日期', '成交量', '成交额']
+        self.other_cols = ['成交量', '成交额']
         self.handle_data()
+        self.format_data()
+        
+    def handle_data(self):
+        kline = self.stock_data.kline
+        chip = self.stock_data.chip
+        origin = pd.merge(kline, chip, on='日期', how='left').fillna(0)
+        close_prices = np.array(origin['收盘'].tolist())
+        peaks, troughs = self.find_peaks_and_troughs(close_prices)
+        origin['操盘'] = origin.apply(lambda row: self.determine_action(row.name, close_prices, peaks, troughs), axis=1)
+        self.origin = origin
+        return origin
         
     def unnormalize_price(self, val):
         return val * (self.max_price - self.min_price) + self.min_price
@@ -31,98 +35,73 @@ class StockDataHandler:
     
     def min_max_normalize(self, series):
         return (series - series.min()) / (series.max() - series.min())
+    
+    def find_peaks_and_troughs(self, prices, distance=5, prominence=1):
+        peaks, _ = find_peaks(prices, distance=distance, prominence=prominence)
+        troughs, _ = find_peaks(-prices, distance=distance, prominence=prominence)
+        return peaks, troughs
 
-    def handle_data(self):
-        kline = self.stock_data.kline
-        chip = self.stock_data.chip
-        data = pd.merge(kline, chip, on='日期', how='left').fillna(0)
+    def determine_action(self, row_index, prices, peaks, troughs):
+        for trough in troughs:
+            if abs(row_index - trough) <= 5 and prices[row_index] <= prices[trough] * 1.05:
+                return "buy"
+        for peak in peaks:
+            if abs(row_index - peak) <= 3 and prices[row_index] >= prices[peak] * 0.95:
+                return "sell"
+
+        return "inaction"
+        
+    def format_data(self):
+        data = self.origin.copy()
         data.drop(['股票代码'], axis=1, inplace=True)
-        data['日期'] = pd.to_datetime(data['日期']).dt.strftime('%Y%m%d').astype(int)
-        self.max_price = math.ceil(data['最高'].max() * MAX_PERCENT)
-        self.min_price = math.floor(data['最低'].min() * MIN_PERCENT)
+        self.max_price = math.ceil(data['最高'].max())
+        self.min_price = math.floor(data['最低'].min())
 
-        # Min-max normalization
         data[self.price_cols] = data[self.price_cols].apply(
             lambda x: self.normalize_price(x)
         )
-        
         data[self.other_cols] = data[self.other_cols].apply(self.min_max_normalize)
-        
+        data['操盘'] = data['操盘'].apply(lambda x: 1 if x == 'buy' else (2 if x == 'sell' else 3))
+
+        data['年'] = pd.to_datetime(data['日期'], format=DATE_FORMAT).dt.year
+        data['月'] = pd.to_datetime(data['日期'], format=DATE_FORMAT).dt.month
+        data['日'] = pd.to_datetime(data['日期'], format=DATE_FORMAT).dt.day
+        data['星期'] = pd.to_datetime(data['日期'], format=DATE_FORMAT).dt.dayofweek
         self.data = data
         return self
 
-    def create_sequences(self):
-        X, Y = [], []
-        for i in range(len(self.data) - self.sequence_length):
-            X.append(self.data.iloc[i:i + self.sequence_length].values)
-            Y.append(self.data.iloc[i + self.sequence_length][['收盘']].values)
-        
-        return np.array(X, dtype=np.float32), np.array(Y, dtype=np.float32)
-
-    def get_dataset(self):
-        if self.cached_dataset is None:
-            X, Y = self.create_sequences()
-            X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=self.test_ratio, shuffle=False)
-            self.cached_dataset = (X_train, X_test, Y_train, Y_test)
-        return self.cached_dataset
-
-    def get_train_loader(self):
-        X_train, _, Y_train, _ = self.get_dataset()
-        train_dataset = StockDataset(X_train, Y_train)
-        return DataLoader(dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
-
-    def get_test_loader(self):
-        _, X_test, _, Y_test = self.get_dataset()
-        test_dataset = StockDataset(X_test, Y_test)
-        return DataLoader(dataset=test_dataset, batch_size=self.batch_size, shuffle=False)
-
-    def get_recent_data(self):
-        # 获取最近的 sequence_length 天的数据
-        recent_data = self.data.iloc[-self.sequence_length:].values
-        return np.array(recent_data, dtype=np.float32)
     
-    def draw(self):
-        # Get the training and testing datasets
-        X_train, X_test, Y_train, Y_test = self.get_dataset()
+    def plot_signals(self, days=None):
+        if self.origin is None:
+            print("No data to plot. Please run handle_data() first.")
+            return
+        
+        self.origin['日期'] = pd.to_datetime(self.origin['日期'])
+        
+        if days is not None:
+            data_to_plot = self.origin.tail(days)
+        else:
+            data_to_plot = self.origin
+        
+        fig, ax = plt.subplots(figsize=(14, 7))
+        
+        plt.plot(data_to_plot['日期'], data_to_plot['收盘'], label='Close Price', color='blue', linewidth=1.5)
+        
+        buy_signals = data_to_plot[data_to_plot['操盘'] == 'buy']
+        sell_signals = data_to_plot[data_to_plot['操盘'] == 'sell']
+        
+        plt.scatter(buy_signals['日期'], buy_signals['收盘'], label='Buy Signal', marker='^', color='green', s=100)
+        plt.scatter(sell_signals['日期'], sell_signals['收盘'], label='Sell Signal', marker='v', color='red', s=100)
 
-        # Plotting the training and testing datasets
-        plt.figure(figsize=(12, 6))
+        ax.set_title('Stock Price with Buy and Sell Signals')
+        ax.set_xlabel('Date')
+        ax.set_ylabel('Price')
+        ax.legend()
 
-        # Plot training data
-        plt.subplot(1, 2, 1)
-        for i in range(min(len(X_train), 5)):  # Plot first 5 sequences for example
-            plt.plot(range(self.sequence_length), X_train[i, :, -1], label=f'Sequence {i+1}')
-        plt.title('Training Data Sequences')
-        plt.xlabel('Time Step')
-        plt.ylabel('Normalized Price')
-        plt.legend()
+        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        ax.xaxis.set_major_locator(mdates.AutoDateLocator(maxticks=10))  # 控制最大的日期标签数量
 
-        # Plot testing data
-        plt.subplot(1, 2, 2)
-        for i in range(min(len(X_test), 5)):  # Plot first 5 sequences for example
-            plt.plot(range(self.sequence_length), X_test[i, :, -1], label=f'Sequence {i+1}')
-        plt.title('Testing Data Sequences')
-        plt.xlabel('Time Step')
-        plt.ylabel('Normalized Price')
-        plt.legend()
+        ax.grid(False)
+        fig.autofmt_xdate()
 
-        plt.tight_layout()
         plt.show()
-
-
-class StockDataset(Dataset):
-    def __init__(self, X, Y, transform=None):
-        self.X = X
-        self.Y = Y
-        self.transform = transform
-
-    def __getitem__(self, index):
-        x = self.X[index]
-        y = self.Y[index]
-        if self.transform:
-            x = self.transform(x)
-        return x, y
-
-    def __len__(self):
-        return len(self.X)
-
