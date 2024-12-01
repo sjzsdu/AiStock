@@ -16,14 +16,28 @@ class OperatePrediction(BasePrediction):
             os.makedirs(path)
 
         input_size = loader.feature_length()
-        output_size = loader.label_length()
-        model = LSTMModule(input_size=input_size, output_size=output_size, **model_kwargs)
+        model = OperateModule(input_size=input_size, output_size=3, **model_kwargs)
         
-        # criterion = nn.CrossEntropyLoss()
-        # optimizer = torch.optim.Adam(model.parameters(), lr=1, **opt_kwargs)
-        criterion = nn.MSELoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.1)
+        criterion = nn.CrossEntropyLoss()
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.00001, **opt_kwargs)
 
         super().__init__(loader = loader, model= model, criterion = criterion, optimizer = optimizer, file = file, **kwargs)
+        
+    def do_train(self, data, label):
+        data = data.to(self.device)
+        label = label.to(self.device)
+        self.optimizer.zero_grad()
+        output = self.model(data)
+        loss = self.criterion(output, label.long())
+        loss.backward()
+        self.optimizer.step()
+        return loss
+        
+    def do_evaluate(self, data, label, preds, labels):
+        data = data.to(self.device)
+        pred = self.model(data)
+        print('do_evaluate', pred.shape)
+        preds.append(pred.tolist())
+        labels.append(label.tolist())
         
     

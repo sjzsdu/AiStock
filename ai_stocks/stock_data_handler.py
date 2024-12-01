@@ -61,7 +61,7 @@ class StockDataHandler:
             lambda x: self.normalize_price(x)
         )
         data[self.other_cols] = data[self.other_cols].apply(self.min_max_normalize)
-        data['操盘'] = data['操盘'].apply(lambda x: 1 if x == 'buy' else (2 if x == 'sell' else 3))
+        data['操盘'] = data['操盘'].apply(lambda x: 0 if x == 'buy' else (1 if x == 'sell' else 2))
 
         data['年'] = pd.to_datetime(data['日期'], format=DATE_FORMAT).dt.year
         data['月'] = pd.to_datetime(data['日期'], format=DATE_FORMAT).dt.month
