@@ -80,23 +80,22 @@ class BasePrediction:
             return prediction
     
     def create_dataframe(self, preds, labels):
-        results = []
+        res_pred = []
+        res_label = []
         for i in range(len(preds)):
-            results.append({'Predictions': preds[i], 'Actual Values': labels[i]})
-        self.df = pd.DataFrame(results)
+            for j in range(len(preds[i])):
+                pred_price = self.loader.data_handler.unnormalize_price(preds[i][j])
+                label_price = self.loader.data_handler.unnormalize_price(labels[i][j])
+                res_pred.append(pred_price)
+                res_label.append(label_price)
+        self.df = pd.DataFrame({'Predictions': res_pred, 'Actual Values': res_label})
         return self.df
     
-    def show(self, index=0):
-        row = self.df.iloc[index]
-        # 将预测向量转换为具体类别或值
-        prediction_values = np.argmax(row['Predictions'], axis=1)
-
-        index_list = list(range(len(prediction_values)))
-
+    def show(self):
+        row = self.df
+        index_list = list(range(len(row['Predictions'])))
         plt.figure(figsize=(10, 6))
-
-        # 绘制预测值和实际值
-        plt.plot(index_list, prediction_values, label='Predictions', color='blue', marker='o')
+        plt.plot(index_list, row['Predictions'], label='Predictions', color='blue', marker='o')
         plt.plot(index_list, row['Actual Values'], label='Actual Values', color='red', marker='x')
 
         plt.title('Predictions vs Actual Values')

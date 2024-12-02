@@ -23,7 +23,7 @@ class BaseDataloader:
     - get_train_loader(): 获取训练集数据加载器。
     - get_test_loader(): 获取测试集数据加载器。
     """
-    def __init__(self, data: DataFrame, label_cols: List[str], sequence_length=30, batch_size=32, test_ratio=0.2):
+    def __init__(self, data: DataFrame, label_cols: List[str], sequence_length=30, batch_size=32, test_ratio=0.1):
         """
         初始化 BaseDataloader 类的实例。
 

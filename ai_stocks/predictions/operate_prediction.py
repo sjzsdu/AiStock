@@ -4,7 +4,7 @@ from ai_stocks.moduls import LSTMModule, OperateModule
 import os
 import torch.nn as nn
 import torch
-
+import numpy as np
 class OperatePrediction(BasePrediction):
     name = 'operate'
     def __init__(self, stock_info, loader_kwargs = {}, model_kwargs = {}, opt_kwargs = {}, **kwargs):
@@ -19,7 +19,7 @@ class OperatePrediction(BasePrediction):
         model = OperateModule(input_size=input_size, output_size=3, **model_kwargs)
         
         criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.00001, **opt_kwargs)
+        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, **opt_kwargs)
 
         super().__init__(loader = loader, model= model, criterion = criterion, optimizer = optimizer, file = file, **kwargs)
         
@@ -36,8 +36,10 @@ class OperatePrediction(BasePrediction):
     def do_evaluate(self, data, label, preds, labels):
         data = data.to(self.device)
         pred = self.model(data)
-        print('do_evaluate', pred.shape)
-        preds.append(pred.tolist())
+        prediction_values = np.argmax(pred.tolist(), axis=1)
+        preds.append(prediction_values)
         labels.append(label.tolist())
+        
+    
         
     

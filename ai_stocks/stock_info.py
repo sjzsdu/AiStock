@@ -12,10 +12,12 @@ class StockInfo:
         for item in predicts:
             if isinstance(item, str):
                 predict = self.get_predict(item)
+                predict_kwargs = kwargs[item] if item in kwargs else {}
                 if (predict is not None):
-                    self.predicts[item] = predict(self)
+                    self.predicts[item] = predict(self, **predict_kwargs)
             else:
-                self.predicts[item.name] = item(self)
+                predict_kwargs = kwargs[item.name] if item.name in kwargs else {}
+                self.predicts[item.name] = item(self, **kwargs[item.name])
                 
     def get_predict(self, name: str):
         for predict in predictions_list:
