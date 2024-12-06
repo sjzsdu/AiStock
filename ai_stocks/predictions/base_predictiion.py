@@ -34,14 +34,36 @@ class BasePrediction:
     def train(self):
         try:
             train_loader = self.loader.get_train_loader()
+            self.model.train()
             for i in range(self.epochs):
                 total_loss = 0
+                self.optimizer.zero_grad()
                 for idx, (data, label) in enumerate(train_loader):
                     loss = self.do_train(data, label)
-                total_loss += loss.item()
+                    total_loss += loss.item()
                 if i % 10 == 0:
                     torch.save({'state_dict': self.model.state_dict()}, self.file)
-                print(f'Epoch [{i+1}/{self.epochs}], Loss: {loss.item():.4f}')
+                print(f'Epoch [{i+1}/{self.epochs}], Loss: {total_loss:.4f}')
+
+            self.trained = True
+            torch.save({'state_dict': self.model.state_dict()}, self.file)
+            print(f'Training finished.')
+        except Exception as e:
+            print(f"Error during model training: {e}")
+            
+    def train_test(self):
+        try:
+            test_loader = self.loader.get_test_loader()
+            self.model.train()
+            for i in range(self.epochs):
+                total_loss = 0
+                self.optimizer.zero_grad()
+                for idx, (data, label) in enumerate(test_loader):
+                    loss = self.do_train(data, label)
+                    total_loss += loss.item()
+                if i % 10 == 0:
+                    torch.save({'state_dict': self.model.state_dict()}, self.file)
+                print(f'Epoch [{i+1}/{self.epochs}], Loss: {total_loss:.4f}')
 
             self.trained = True
             torch.save({'state_dict': self.model.state_dict()}, self.file)
@@ -53,6 +75,7 @@ class BasePrediction:
         pass
 
     def evaluate(self):
+        self.model.eval()
         preds = []
         labels = []
         test_loader = self.loader.get_test_loader()
@@ -64,6 +87,17 @@ class BasePrediction:
     
     def do_evaluate(self, data, label, preds, labels):
        pass
+   
+    def evaluate_recent(self, **kwargs):
+        self.model.eval()
+        preds = []
+        labels = []
+        test_loader = self.loader.get_recent_loader(**kwargs)
+        for idx, (data, label) in enumerate(test_loader):
+            self.do_evaluate(data, label, preds, labels)
+        
+        self.create_dataframe(preds, labels)
+        return self
     
     def predict(self):
         self.model.eval()

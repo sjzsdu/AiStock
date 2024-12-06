@@ -8,4 +8,5 @@ class OperateDataloader(BaseDataloader):
        '平均', '加权平均', '获利比例', '平均成本', '90成本-低', '90成本-高', '90集中度', '70成本-低',
        '70成本-高', '70集中度', '操盘']
         dataset = self.data_handler.data[feature_cols]
+        self.cols = feature_cols + ['操盘']
         super().__init__(dataset, ['操盘'],  **kwargs)

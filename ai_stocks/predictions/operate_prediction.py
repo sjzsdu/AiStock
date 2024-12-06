@@ -11,7 +11,7 @@ class OperatePrediction(BasePrediction):
         self.stock_info = stock_info
         loader = OperateDataloader(stock_info.symbol, **loader_kwargs)
         path = f'data/{stock_info.symbol}'
-        file = f'{path}/operate.pth'
+        file = f'{path}/operate-{loader.get_key()}.pth'
         if not os.path.exists(path):
             os.makedirs(path)
 

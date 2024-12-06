@@ -4,6 +4,8 @@ from pandas import DataFrame
 from typing import List
 from .stock_dataset import StockDataset
 from torch.utils.data import DataLoader
+from ai_stocks.utils import generate_short_md5
+import pandas as pd
 
 class BaseDataloader:
     """
@@ -42,7 +44,7 @@ class BaseDataloader:
         self.label_cols = label_cols
         self.cached_dataset = None  # 缓存数据集
 
-    def create_sequences(self):
+    def create_sequences(self, days = None):
         """
         从数据中创建序列。
 
@@ -50,21 +52,38 @@ class BaseDataloader:
         - X (numpy.ndarray): 特征序列。
         - Y (numpy.ndarray): 标签序列。
         """
-        labels = self.data[self.label_cols]
+        data = self.data
+        if days is not None:
+            data = self.data.copy()
+            last_row = data.iloc[-1]
+            expanded_rows = pd.DataFrame([last_row] * days, columns=data.columns)
+            data = pd.concat([data, expanded_rows], ignore_index=True)
+            return self._create_sequences(data)
 
+        if not hasattr(self, 'cached_X') or not hasattr(self, 'cached_Y'):
+            X, Y = self._create_sequences(data)
+            self.cached_X = X
+            self.cached_Y = Y
+
+        return self.cached_X, self.cached_Y
+    
+    def _create_sequences(self, data):
+        labels = data[self.label_cols]
         X, Y = [], []
 
-        for i in range(len(self.data) - self.sequence_length):
-            X.append(self.data.iloc[i:i + self.sequence_length].values)
-            Y.append(labels.iloc[i + self.sequence_length].values)
+        for i in range(len(data) - self.sequence_length):
+            X.append(data.iloc[i:i + self.sequence_length].values)
+            if i < len(labels) - self.sequence_length - 1:
+                Y.append(labels.iloc[i + self.sequence_length + 1].values)
+            else:
+                Y.append(labels.iloc[i + self.sequence_length].values)
 
-        X = np.array(X, dtype=np.float32)
-        Y = np.array(Y, dtype=np.float32)
+        arr_x = np.array(X, dtype=np.float32)
+        arr_y = np.array(Y, dtype=np.float32)
 
-        if len(Y.shape) == 1 or (Y.shape[-1] == 1):
-            Y = Y.flatten()
-
-        return X, Y
+        if len(arr_x.shape) == 1 or (arr_y.shape[-1] == 1):
+           arr_y = arr_y.flatten()
+        return (arr_x, arr_y)
 
     def get_dataset(self):
         """
@@ -104,13 +123,36 @@ class BaseDataloader:
         test_dataset = StockDataset(X_test, Y_test)
         return DataLoader(dataset=test_dataset, batch_size=self.batch_size, shuffle=False)
     
-    def get_recent_data(self):
-        # 获取最近的 sequence_length 天的数据
-        recent_data = self.data.iloc[-self.sequence_length:].values
-        return np.array(recent_data, dtype=np.float32)
+    def get_recent_loader(self, batchs = None, days = None):
+        batch_size = self.batch_size
+        if batchs is not None:
+            batch_size = batchs * self.batch_size
+        
+        X, Y = self.create_sequences(days = days)
+        train_dataset = StockDataset(X[-batch_size:], Y[-batch_size:])
+        return DataLoader(dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
     
+    
+    def get_recent_data(self, days = 0):
+        # 获取最近的 sequence_length 天的数据
+        start_idx = -self.sequence_length - days if days != 0 else -self.sequence_length
+        end_idx = -days if days != 0 else None
+
+        # 打印调试信息（可选）
+        print('recentData', start_idx, end_idx)
+
+        # 获取所需的数据片段
+        recent_data = self.data.iloc[start_idx:end_idx].values
+
+        # 返回以 np.float32 类型的 numpy 数组
+        return np.array(recent_data, dtype=np.float32)
+        
     def feature_length(self):
         return len(self.data.columns)
     
     def label_length(self):
         return len(self.label_cols)
+    
+    def get_key(self):
+        data = ','.join(self.cols)
+        return generate_short_md5(data)
