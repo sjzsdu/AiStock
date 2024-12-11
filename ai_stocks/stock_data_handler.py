@@ -1,4 +1,4 @@
-from china_stock_data import StockData
+from china_stock_data import StockData, StockMarket
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
@@ -10,10 +10,11 @@ from ai_stocks.config import DATE_FORMAT
 class StockDataHandler:
     def __init__(self, symbol):
         self.symbol = symbol
-        self.stock_data = StockData(symbol, days=365 * 100)
+        self.stock_data = StockData(symbol, days=365 * 10)
+        self.market_data = StockMarket()
 
         self.price_cols = ['开盘', '收盘', '最高', '最低', '涨跌额', '平均', '加权平均', '平均成本', '90成本-低', '90成本-高', '70成本-低', '70成本-高']
-        self.other_cols = ['成交量', '成交额']
+        self.other_cols = ['成交量', '成交额', 'us_volume', 'us_price', '沪深300指数']
         self.handle_data()
         self.format_data()
         
@@ -21,6 +22,15 @@ class StockDataHandler:
         kline = self.stock_data.kline
         chip = self.stock_data.chip
         origin = pd.merge(kline, chip, on='日期', how='left').fillna(0)
+        
+        us_index = self.market_data.us_index
+        us_index = us_index.rename(columns={'date': '日期'})
+        us_index = us_index.rename(columns={'close': 'us_price'})
+        us_index = us_index.rename(columns={'volume': 'us_volume'})
+        market_motion = self.market_data.market_motion
+        origin = pd.merge(origin, market_motion, on='日期', how='inner').fillna(0)
+        origin = pd.merge(origin, us_index, on='日期', how='inner').fillna(0)
+
         close_prices = np.array(origin['收盘'].tolist())
         peaks, troughs = self.find_peaks_and_troughs(close_prices)
         origin['操盘'] = origin.apply(lambda row: self.determine_action(row.name, close_prices, peaks, troughs), axis=1)
