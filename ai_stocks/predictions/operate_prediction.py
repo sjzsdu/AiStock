@@ -1,4 +1,4 @@
-from .base_predictiion import BasePrediction
+from .base_prediction import BasePrediction
 from ai_stocks.datas import OperateDataloader
 from ai_stocks.moduls import LSTMModule, OperateModule
 import os

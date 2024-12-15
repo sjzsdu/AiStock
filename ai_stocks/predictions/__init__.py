@@ -1,4 +1,4 @@
-from .base_predictiion import BasePrediction
+from .base_prediction import BasePrediction
 from .operate_prediction import OperatePrediction
 from .price_prediction import PricePrediction
 

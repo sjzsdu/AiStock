@@ -28,8 +28,9 @@ class StockDataHandler:
         us_index = us_index.rename(columns={'close': 'us_price'})
         us_index = us_index.rename(columns={'volume': 'us_volume'})
         market_motion = self.market_data.market_motion
-        origin = pd.merge(origin, market_motion, on='日期', how='inner').fillna(0)
-        origin = pd.merge(origin, us_index, on='日期', how='inner').fillna(0)
+        origin = pd.merge(origin, market_motion, on='日期', how='left').fillna(0)
+        origin = pd.merge(origin, us_index, on='日期', how='left').fillna(0)
+        origin.fillna(0, inplace=True)
 
         close_prices = np.array(origin['收盘'].tolist())
         peaks, troughs = self.find_peaks_and_troughs(close_prices)

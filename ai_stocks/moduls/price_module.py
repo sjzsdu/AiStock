@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 
 class PriceModule(nn.Module):
@@ -9,17 +10,16 @@ class PriceModule(nn.Module):
         self.output_size = output_size
         self.dropout = dropout
         self.batch_first = batch_first
-
-        self.rnn = nn.LSTM(input_size=self.input_size, 
+        self.rnn = nn.LSTM(input_size=input_size, 
                            hidden_size=self.hidden_size, 
                            num_layers=self.num_layers, 
                            batch_first=self.batch_first, 
                            dropout=(0 if num_layers == 1 else self.dropout))
         
-        self.linear = nn.Linear(self.hidden_size, self.output_size)
+        self.fc1 = nn.Linear(self.hidden_size, self.output_size)
         
     def forward(self, x):
         out, (hidden, cell) = self.rnn(x)
         out = out[:, -1, :]
-        out = self.linear(out)
+        out = self.fc1(out)
         return out

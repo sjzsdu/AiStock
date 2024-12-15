@@ -25,7 +25,7 @@ class BaseDataloader:
     - get_train_loader(): 获取训练集数据加载器。
     - get_test_loader(): 获取测试集数据加载器。
     """
-    def __init__(self, data: DataFrame, label_cols: List[str], sequence_length=30, batch_size=32, test_ratio=0.1):
+    def __init__(self, data: DataFrame, feature_cols: List[str], label_cols: List[str], sequence_length=30, batch_size=32, test_ratio=0.1):
         """
         初始化 BaseDataloader 类的实例。
 
@@ -42,6 +42,7 @@ class BaseDataloader:
         self.batch_size = batch_size
         self.test_ratio = test_ratio
         self.label_cols = label_cols
+        self.feature_cols = feature_cols
         self.cached_dataset = None  # 缓存数据集
 
     def create_sequences(self, days = None):
@@ -69,10 +70,11 @@ class BaseDataloader:
     
     def _create_sequences(self, data):
         labels = data[self.label_cols]
+        features = data[self.feature_cols]
         X, Y = [], []
 
         for i in range(len(data) - self.sequence_length):
-            X.append(data.iloc[i:i + self.sequence_length].values)
+            X.append(features.iloc[i:i + self.sequence_length].values)
             if i < len(labels) - self.sequence_length - 1:
                 Y.append(labels.iloc[i + self.sequence_length + 1].values)
             else:
@@ -148,7 +150,7 @@ class BaseDataloader:
         return np.array(recent_data, dtype=np.float32)
         
     def feature_length(self):
-        return len(self.data.columns)
+        return len(self.feature_cols)
     
     def label_length(self):
         return len(self.label_cols)

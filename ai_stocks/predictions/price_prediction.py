@@ -1,15 +1,16 @@
-from .base_predictiion import BasePrediction
+from .base_prediction import BasePrediction
 from ai_stocks.datas import PriceDataloader
 from ai_stocks.moduls import PriceModule
 import os
-import torch.nn as nn
 import torch
-from torch.optim.lr_scheduler import StepLR
+import torch.nn as nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from ai_stocks.utils import generate_short_md5
 
 class PricePrediction(BasePrediction):
     name = 'price'
-    def __init__(self, stock_info, loader_kwargs = {}, model_kwargs = {}, opt_kwargs = {},  sch_kwargs = {}, **kwargs):
+    
+    def __init__(self, stock_info, loader_kwargs={}, model_kwargs={}, opt_kwargs={}, sch_kwargs={}, **kwargs):
         self.stock_info = stock_info
         loader = PriceDataloader(stock_info.symbol, **loader_kwargs)
         path = f'data/{stock_info.symbol}'
@@ -20,6 +21,7 @@ class PricePrediction(BasePrediction):
             'input_size': input_size,
             'output_size': output_size
         } | model_kwargs
+        
         model = PriceModule(**_model_kwargs)
         
         criterion = nn.MSELoss()
@@ -33,8 +35,8 @@ class PricePrediction(BasePrediction):
             'step_size': 10,
             'gamma': 0.1
         } | sch_kwargs
-        # scheduler = StepLR(optimizer, **_sch_kwargs)
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=5, factor=0.2)
+        
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=5, factor=0.2)
         
         key = generate_short_md5(f'{loader.get_key()}-{str(_model_kwargs)}-{str(_opt_kwargs)}-{str(_sch_kwargs)}')
         file = f'{path}/price-{key}.pth'
