@@ -41,7 +41,7 @@ class BasePrediction:
                     data, label = data.to(self.device), label.to(self.device)
                     self.optimizer.zero_grad()
                     output = self.model(data)
-                    output = self.format_output(output)
+                    output, label = self.format_output(output, label)
                     loss = self.criterion(output, label)
                     loss.backward()
                     total_loss += loss.item()
@@ -77,7 +77,7 @@ class BasePrediction:
                     data, label = data.to(self.device), label.to(self.device)
                     self.optimizer.zero_grad()
                     output = self.model(data)
-                    output = self.format_output(output)
+                    output = self.format_output(output, label)
                     loss = self.criterion(output, label)
                     loss.backward()
                     total_loss += loss.item()
@@ -94,8 +94,8 @@ class BasePrediction:
         except Exception as e:
             print(f"Error during model training: {e}")
             
-    def format_output(self, output):
-        return output
+    def format_output(self, output, label):
+        return (output, label)
 
     def evaluate(self):
         self.model.eval()
@@ -105,28 +105,13 @@ class BasePrediction:
         for idx, (data, label) in enumerate(test_loader):
             data, label = data.to(self.device), label.to(self.device)
             pred = self.model(data)
-            pred = self.format_output(pred)
+            pred = self.format_output(pred, label)
             preds.append(pred.tolist())
             labels.append(label.tolist())
         
         self.create_dataframe(preds, labels)
         return self
    
-    def evaluate_recent(self, **kwargs):
-        self.model.eval()
-        preds = []
-        labels = []
-        test_loader = self.loader.get_recent_loader(**kwargs)
-        for idx, (data, label) in enumerate(test_loader):
-            data, label = data.to(self.device), label.to(self.device)
-            pred = self.model(data)
-            pred = self.format_output(pred)
-            preds.append(pred.tolist())
-            labels.append(label.tolist())
-        
-        self.create_dataframe(preds, labels)
-        return self
-    
     def predict(self):
         self.model.eval()
         with torch.no_grad():

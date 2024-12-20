@@ -36,7 +36,7 @@ class PricePrediction(BasePrediction):
             'gamma': 0.1
         } | sch_kwargs
         
-        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=5, factor=0.2)
+        scheduler = ReduceLROnPlateau(optimizer, 'min', patience=5, factor=0.2, **_sch_kwargs)
         
         key = generate_short_md5(f'{loader.get_key()}-{str(_model_kwargs)}-{str(_opt_kwargs)}-{str(_sch_kwargs)}')
         file = f'{path}/price-{key}.pth'
@@ -52,7 +52,22 @@ class PricePrediction(BasePrediction):
             **kwargs
         )
         
-    def format_output(self, output):
+    def format_output(self, output, label):
         output = output.squeeze(1)
-        return output    
+        return (output, label)    
+    
+    
+    def evaluate_recent(self, **kwargs):
+        self.model.eval()
+        preds = []
+        labels = []
+        test_loader = self.loader.get_recent_loader(**kwargs)
+        for idx, (data, label) in enumerate(test_loader):
+            data, label = data.to(self.device), label.to(self.device)
+            pred = self.model(data)
+            pred, label = self.format_output(pred, label)
+            preds.append(pred.tolist())
+            labels.append(label.tolist())
+        self.create_dataframe(preds, labels)
+        return self
     

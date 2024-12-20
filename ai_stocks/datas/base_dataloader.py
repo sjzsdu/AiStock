@@ -25,7 +25,7 @@ class BaseDataloader:
     - get_train_loader(): 获取训练集数据加载器。
     - get_test_loader(): 获取测试集数据加载器。
     """
-    def __init__(self, data: DataFrame, feature_cols: List[str], label_cols: List[str], sequence_length=30, batch_size=32, test_ratio=0.1):
+    def __init__(self, data: DataFrame, feature_cols: List[str], label_cols: List[str], sequence_length=30, predict_length=1, batch_size=32, test_ratio=0.1):
         """
         初始化 BaseDataloader 类的实例。
 
@@ -39,13 +39,14 @@ class BaseDataloader:
         """
         self.data = data
         self.sequence_length = sequence_length
+        self.predict_length = predict_length
         self.batch_size = batch_size
         self.test_ratio = test_ratio
         self.label_cols = label_cols
         self.feature_cols = feature_cols
         self.cached_dataset = None  # 缓存数据集
 
-    def create_sequences(self, days = None):
+    def create_sequences(self, days = None, is_predict = False):
         """
         从数据中创建序列。
 
@@ -54,10 +55,13 @@ class BaseDataloader:
         - Y (numpy.ndarray): 标签序列。
         """
         data = self.data
+        if (is_predict):
+            return self._create_sequences(data, is_predict = is_predict)
         if days is not None:
             data = self.data.copy()
             last_row = data.iloc[-1]
             expanded_rows = pd.DataFrame([last_row] * days, columns=data.columns)
+            print('expanded rows', expanded_rows)
             data = pd.concat([data, expanded_rows], ignore_index=True)
             return self._create_sequences(data)
 
@@ -68,7 +72,7 @@ class BaseDataloader:
 
         return self.cached_X, self.cached_Y
     
-    def _create_sequences(self, data):
+    def _create_sequences(self, data, is_predict = False):
         labels = data[self.label_cols]
         features = data[self.feature_cols]
         X, Y = [], []
@@ -130,7 +134,7 @@ class BaseDataloader:
         if batchs is not None:
             batch_size = batchs * self.batch_size
         
-        X, Y = self.create_sequences(days = days)
+        X, Y = self.create_sequences(days = days, is_predict=True)
         train_dataset = StockDataset(X[-batch_size:], Y[-batch_size:])
         return DataLoader(dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
     
