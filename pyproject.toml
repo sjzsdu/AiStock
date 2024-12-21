@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "ai-stocks"
-version = "0.1.4"
-description = ""
+version = "0.1.5"
+description = "An AI stock prediction tool."
 authors = ["sunjuzhong <129019668+sunjuzhong@users.noreply.github.com>"]
 readme = "README.md"
 

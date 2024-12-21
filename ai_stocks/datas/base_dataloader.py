@@ -116,7 +116,7 @@ class BaseDataloader:
         """
         X_train, _, Y_train, _ = self.get_dataset()
         train_dataset = StockDataset(X_train, Y_train)
-        return DataLoader(dataset=train_dataset, batch_size=self.batch_size, shuffle=False)
+        return DataLoader(dataset=train_dataset, batch_size=self.batch_size, shuffle=False, num_workers = 4)
 
     def get_test_loader(self):
         """
@@ -127,7 +127,7 @@ class BaseDataloader:
         """
         _, X_test, _, Y_test = self.get_dataset()
         test_dataset = StockDataset(X_test, Y_test)
-        return DataLoader(dataset=test_dataset, batch_size=self.batch_size, shuffle=False)
+        return DataLoader(dataset=test_dataset, batch_size=self.batch_size, shuffle=False, num_workers = 4)
     
     def get_recent_loader(self, batchs = None, days = None):
         batch_size = self.batch_size

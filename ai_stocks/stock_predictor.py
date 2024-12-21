@@ -58,11 +58,11 @@ class StockPredictor:
                     self.stocks_by_growth[i].append(stock)
                     break
                     
-    def show_predicts(self, percent):
+    def show_predicts(self, percent = 5):
         stocks = self.stocks_by_growth[percent]
         for stock in stocks:
             per = stock.grow_percent()
-            print(f'{stock.symbol} will grow {per}%')
+            print(f'{stock.loader.symbol} will grow {per}%')
             stock.show()
             
     
