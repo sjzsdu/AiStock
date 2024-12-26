@@ -40,6 +40,8 @@ class BasePrediction:
                 for idx, (data, label) in enumerate(train_loader):
                     data, label = data.to(self.device), label.to(self.device)
                     self.optimizer.zero_grad()
+                    if self.format_input:
+                        data = self.format_input(data)
                     output = self.model(data)
                     output, label = self.format_output(output, label)
                     loss = self.criterion(output, label)
