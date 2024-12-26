@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 class BasePrediction:
-    def __init__(self, loader: BaseDataloader, model: nn.Module, criterion: nn.Module, optimizer: torch.optim.Optimizer, file: str, epochs=100, device='cpu', scheduler=None, **kwargs):
+    def __init__(self, loader: BaseDataloader, model: nn.Module, criterion: nn.Module, optimizer: torch.optim.Optimizer, file: str, epochs=50, device='cuda', scheduler=None, **kwargs):
         self.epochs = epochs
         self.device = device
         self.loader = loader

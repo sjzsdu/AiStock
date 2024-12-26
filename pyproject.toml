@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "ai-stocks"
-version = "0.1.7"
+version = "0.1.8"
 description = "An AI stock prediction tool."
 authors = ["sunjuzhong <129019668+sunjuzhong@users.noreply.github.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.10"
 akshare = "^1.15.32"
 torch = "^2.5.1"
 pandas = "^2.2.3"
