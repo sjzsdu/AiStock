@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ai-stocks"
-version = "0.1.9"
+version = "0.1.10"
 description = "AI Stocks 是一个强大的工具，旨在利用先进的人工智能技术为股票市场分析和预测提供支持。通过整合多种数据源和机器学习算法，该工具能够帮助投资者和分析师更深入地理解市场趋势，做出更明智的投资决策。"
 authors = ["sunjuzhong <129019668+sunjuzhong@users.noreply.github.com>"]
 readme = "README.md"

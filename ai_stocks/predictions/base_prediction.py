@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
 
 class BasePrediction(ABC):
-    def __init__(self, loader: BaseDataloader, model: nn.Module, criterion: nn.Module, optimizer: torch.optim.Optimizer, file: str, epochs=10, device='cuda', scheduler=None, **kwargs):
+    def __init__(self, loader: BaseDataloader, model: nn.Module, criterion: nn.Module, optimizer: torch.optim.Optimizer, file: str, epochs=10, device=None, scheduler=None, **kwargs):
         self.epochs = epochs
-        self.device = device
+        self.device = device or torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.loader = loader
         self.model = model
         self.criterion = criterion
@@ -56,6 +56,7 @@ class BasePrediction(ABC):
             torch.save({'state_dict': self.model.state_dict()}, self.file)
             if show_loss:
                 self.show_loss_history(loss_history)
+            return loss_history
         except Exception as e:
             print(f"Error during model training: {e}")
             
@@ -78,7 +79,7 @@ class BasePrediction(ABC):
     def _model_func(self, data, label):
         if self.format_input:
             data, label = self.format_input(data, label)
-        data, label = data.to(self.device), label.to(self.device)
+        data, label = data.to(self.device), label.to(self.device)  # 确保数据在正确的设备上
         output = self.model(data)
         output, label = self.format_output(output, label)
         return output, label

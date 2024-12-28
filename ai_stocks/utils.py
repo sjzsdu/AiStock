@@ -21,3 +21,14 @@ def is_a_share(stock_code):
         if stock_code.startswith(("0", "3", "6")):
             return True
     return False
+
+
+def gpu_info():
+    import torch
+    # 获取可用的 GPU 数量
+    gpu_count = torch.cuda.device_count()
+    print(f"Available GPUs: {gpu_count}")
+
+    # 列出每个 GPU 的名称
+    for i in range(gpu_count):
+        print(f"GPU {i}: {torch.cuda.get_device_name(i)}")

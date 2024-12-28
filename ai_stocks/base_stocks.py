@@ -50,8 +50,14 @@ class BaseStocks(ABC):
         pass
     
     def train(self, **kwargs):
+        res = {}
+        length = len(self.stocks.items())
+        i = 0
         for symbol, stock in self.stocks.items():
-            stock.train(**kwargs)
+            ret = stock.train(**kwargs)
+            res[symbol] = ret
+            i += 1
+            print(f"{symbol}训练完成", f"已完成{i}/{length}")
             
     def train_test(self, **kwargs):
         for symbol, stock in self.stocks.items():
@@ -72,3 +78,4 @@ class BaseStocks(ABC):
             out = stock.predict(**kwargs)
             res[symbol] = out
         return res
+    
