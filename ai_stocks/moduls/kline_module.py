@@ -46,6 +46,7 @@ class KlineModule(nn.Module):
         x = torch.flatten(x, 1)
         x = self.dropout(x)
         x = self.fc(x)
-
+        
+        x = F.softmax(x, dim=1)
         return x
 

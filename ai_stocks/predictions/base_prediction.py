@@ -4,9 +4,10 @@ import torch
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+from abc import ABC, abstractmethod
 
-class BasePrediction:
-    def __init__(self, loader: BaseDataloader, model: nn.Module, criterion: nn.Module, optimizer: torch.optim.Optimizer, file: str, epochs=50, device='cuda', scheduler=None, **kwargs):
+class BasePrediction(ABC):
+    def __init__(self, loader: BaseDataloader, model: nn.Module, criterion: nn.Module, optimizer: torch.optim.Optimizer, file: str, epochs=10, device='cuda', scheduler=None, **kwargs):
         self.epochs = epochs
         self.device = device
         self.loader = loader
@@ -30,97 +31,97 @@ class BasePrediction:
         for key, value in kwargs.items():
             setattr(self, key, value)
         
-    def train(self):
+    def train(self, show_loss = False):
+        train_loader = self.loader.get_train_loader()
+        return self.do_train(train_loader, show_loss)
+
+    def show_loss_history(self, loss_history):
+        # Plot loss history
+        plt.figure(figsize=(10, 5))
+        plt.plot(range(self.epochs), loss_history)
+        plt.title('Training Loss Over Epochs')
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.show()
+        
+    def do_train(self, loader, show_loss = False):
         try:
-            train_loader = self.loader.get_train_loader()
             self.model.train()
             loss_history = []
             for i in range(self.epochs):
-                total_loss = 0
-                for idx, (data, label) in enumerate(train_loader):
-                    data, label = data.to(self.device), label.to(self.device)
-                    self.optimizer.zero_grad()
-                    if self.format_input:
-                        data = self.format_input(data)
-                    output = self.model(data)
-                    output, label = self.format_output(output, label)
-                    loss = self.criterion(output, label)
-                    loss.backward()
-                    total_loss += loss.item()
-                    self.optimizer.step()
+                total_loss = self.single_train(loader, i)
                 loss_history.append(total_loss)
-                if i % 10 == 0:
-                    torch.save({'state_dict': self.model.state_dict()}, self.file)
-                    print(f'Epoch [{i+1}/{self.epochs}], Loss: {total_loss:.4f}, Learning Rate: {self.optimizer.param_groups[0]["lr"]}')
-                if self.scheduler:
-                    self.scheduler.step(total_loss)
 
             self.trained = True
             torch.save({'state_dict': self.model.state_dict()}, self.file)
-            print(f'Training finished.')
+            if show_loss:
+                self.show_loss_history(loss_history)
+        except Exception as e:
+            print(f"Error during model training: {e}")
             
-            # Plot loss history
-            plt.figure(figsize=(10, 5))
-            plt.plot(range(self.epochs), loss_history)
-            plt.title('Training Loss Over Epochs')
-            plt.xlabel('Epoch')
-            plt.ylabel('Loss')
-            plt.show()
-        except Exception as e:
-            print(f"Error during model training: {e}")
-
-    def train_test(self):
-        try:
-            test_loader = self.loader.get_test_loader()
-            self.model.train()
-            for i in range(self.epochs):
-                total_loss = 0
-                for idx, (data, label) in enumerate(test_loader):
-                    data, label = data.to(self.device), label.to(self.device)
-                    self.optimizer.zero_grad()
-                    output = self.model(data)
-                    output = self.format_output(output, label)
-                    loss = self.criterion(output, label)
-                    loss.backward()
-                    total_loss += loss.item()
-                    self.optimizer.step()
-                if i % 10 == 0:
-                    torch.save({'state_dict': self.model.state_dict()}, self.file)
-                print(f'Epoch [{i+1}/{self.epochs}], Loss: {total_loss:.4f}')
-                if self.scheduler:
-                    self.scheduler.step(total_loss)
-
-            self.trained = True
+    def single_train(self, loader, i):
+        total_loss = 0
+        for idx, (data, label) in enumerate(loader):
+            self.optimizer.zero_grad()
+            output, label = self._model_func(data, label)
+            loss = self.criterion(output, label)
+            loss.backward()
+            total_loss += loss.item()
+            self.optimizer.step()
+        if i % 10 == 0:
             torch.save({'state_dict': self.model.state_dict()}, self.file)
-            print(f'Training finished.')
-        except Exception as e:
-            print(f"Error during model training: {e}")
+            print(f'Epoch [{i+1}/{self.epochs}], Loss: {total_loss:.4f}, Learning Rate: {self.optimizer.param_groups[0]["lr"]}')
+        if self.scheduler:
+            self.scheduler.step(total_loss)
+        return total_loss
+    
+    def _model_func(self, data, label):
+        if self.format_input:
+            data, label = self.format_input(data, label)
+        data, label = data.to(self.device), label.to(self.device)
+        output = self.model(data)
+        output, label = self.format_output(output, label)
+        return output, label
+
+    def train_test(self, show_loss = False):
+        test_loader = self.loader.get_test_loader()
+        return self.do_train(test_loader, show_loss)
             
     def format_output(self, output, label):
         return (output, label)
+    
+    def format_input(self, data, label):
+        return (data, label)
 
     def evaluate(self):
         self.model.eval()
-        preds = []
-        labels = []
         test_loader = self.loader.get_test_loader()
+        total_correct = 0
+        total_wrong = 0
         for idx, (data, label) in enumerate(test_loader):
-            data, label = data.to(self.device), label.to(self.device)
-            pred = self.model(data)
-            pred = self.format_output(pred, label)
-            preds.append(pred.tolist())
-            labels.append(label.tolist())
-        
-        self.create_dataframe(preds, labels)
-        return self
+            output, label = self._model_func(data, label)
+            correct, wrong = self.evaluate_ouput(output, label)
+            total_correct += correct
+            total_wrong += wrong
+        return total_correct / (total_correct + total_wrong)
+    
+    @abstractmethod
+    def evaluate_ouput(self, output, label):
+        """创建预测实例，子类需要实现这个方法"""
+        pass
    
+    def get_recent_data(self):
+        return self.loader.get_recent_data()
+
     def predict(self):
         self.model.eval()
         with torch.no_grad():
-            stock_data = self.loader.get_recent_data()
-            recent_data = torch.tensor(stock_data, dtype=torch.float32).to(self.device)
-
-            prediction = self.model(recent_data.unsqueeze(1))
+            stock_data = self.get_recent_data()
+            stock_data = torch.tensor(stock_data, dtype=torch.float32)
+            if self.format_input:
+                stock_data, _ = self.format_input(stock_data, None)
+            stock_data = stock_data.to(self.device)
+            prediction = self.model(stock_data)
             return prediction
     
     def create_dataframe(self, preds, labels):

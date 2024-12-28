@@ -6,20 +6,21 @@ import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from ai_stocks.utils import generate_short_md5
+import numpy as np
 
 class KlinePrediction(BasePrediction):
     name = 'kline'
     
-    def __init__(self, stock_info, loader_kwargs={}, model_kwargs={}, opt_kwargs={}, sch_kwargs={}, **kwargs):
-        self.stock_info = stock_info
+    def __init__(self, symbol, loader_kwargs={}, model_kwargs={}, opt_kwargs={}, sch_kwargs={}, **kwargs):
+        self.symbol = symbol
         _loader_kwargs = {
             'show_volume': True,
-            'figsize': (4, 4), 
+            'figsize': (3, 3), 
             'sequence_length': 60, 
             'predict_length': 5,
             'categtory_nums': (5,2,-2,-5)
         } | loader_kwargs
-        loader = StockKlineLoader(stock_info.symbol, **_loader_kwargs)
+        loader = StockKlineLoader(symbol, **_loader_kwargs)
         
         path = 'data/kline/'
         
@@ -44,7 +45,7 @@ class KlinePrediction(BasePrediction):
         
         scheduler = ReduceLROnPlateau(optimizer, 'min', **_sch_kwargs)
         
-        key = generate_short_md5(f'{str(_loader_kwargs)}-{str(_model_kwargs)}-{str(_opt_kwargs)}-{str(_sch_kwargs)}')
+        key = generate_short_md5(f'{str(_loader_kwargs)}-{str(_model_kwargs)}')
         file = f'{path}/kline-{key}.pth'
         if not os.path.exists(path):
             os.makedirs(path)
@@ -59,27 +60,25 @@ class KlinePrediction(BasePrediction):
             **kwargs
         )
         
-    def format_input(self, input):
+    def format_input(self, input, label):
         input = input.unsqueeze(1)
-        return input
+        return input, label
     
     def format_output(self, output, label):
-        print('format_output', output.shape)
         output = output.squeeze(1)
-        return (output, label)    
+        return (output, label) 
     
+    def evaluate_ouput(self, output, label):
+        output = torch.argmax(output, dim=1)
+        label = torch.argmax(label, dim=1)
+        correct_count = (output == label).sum().item()
+        incorrect_count = (output != label).sum().item()
+        return correct_count, incorrect_count
     
-    def evaluate_recent(self, **kwargs):
-        self.model.eval()
-        preds = []
-        labels = []
-        test_loader = self.loader.get_recent_loader(**kwargs)
-        for idx, (data, label) in enumerate(test_loader):
-            data, label = data.to(self.device), label.to(self.device)
-            pred = self.model(data)
-            pred, label = self.format_output(pred, label)
-            preds.append(pred.tolist())
-            labels.append(label.tolist())
-        self.create_dataframe(preds, labels)
-        return self
+    def get_recent_data(self):
+        data = self.loader.get_recent_data()
+        return np.array([data])
+    
+    def show(self): 
+        raise NotImplementedError()
     
